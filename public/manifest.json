@@ -1,0 +1,22 @@
+{
+  "name": "喵二の小博客",
+  "short_name": "喵二の小博客",
+  "theme_color": "#39c5bb",
+  "description": "缘，妙不可言",
+  "background_color": "#39c5bb",
+  "display": "standalone",
+  "scope": "/",
+  "start_url": "/",
+  "lang": "zh-cmn-Hans",
+  "prefer_related_applications": true,
+  "icons": [
+    {
+      "src": "manifest-icon-192.png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "manifest-icon-512.png",
+      "sizes": "512x512"
+    }
+  ]
+}
