@@ -35,7 +35,7 @@ export const HighLighter: FC<Props> = (props) => {
 
   useInsertionEffect(() => {
     const css = loadStyleSheet(
-      `https://lf3-cdn-tos.bytecdntp.com/cdn/expire-1-M/prism-themes/1.9.0/prism-one-${
+      `https://status.miaoer.net/static/prism-themes/prism-one-${
         isPrintMode ? 'light' : colorMode
       }.css`,
     )
@@ -51,21 +51,21 @@ export const HighLighter: FC<Props> = (props) => {
   }, [colorMode, isPrintMode])
   useInsertionEffect(() => {
     loadStyleSheet(
-      'https://lf26-cdn-tos.bytecdntp.com/cdn/expire-1-M/prism/1.23.0/plugins/line-numbers/prism-line-numbers.min.css',
+      'https://status.miaoer.net/static/prism-themes/prism-line-numbers.min.css',
     )
 
     Promise.all([
       loadScript(
-        'https://lf26-cdn-tos.bytecdntp.com/cdn/expire-1-M/prism/1.23.0/components/prism-core.min.js',
+        'https://status.miaoer.net/static/prism-themes/prism-core.min.js',
       ),
     ])
       .then(() =>
         Promise.all([
           loadScript(
-            'https://lf26-cdn-tos.bytecdntp.com/cdn/expire-1-M/prism/1.23.0/plugins/autoloader/prism-autoloader.min.js',
+            'https://status.miaoer.net/static/prism-themes/prism-autoloader.min.js',
           ),
           loadScript(
-            'https://lf3-cdn-tos.bytecdntp.com/cdn/expire-1-M/prism/1.23.0/plugins/line-numbers/prism-line-numbers.min.js',
+            'https://status.miaoer.net/static/prism-themes/prism-line-numbers.min.js',
           ),
         ]),
       )
