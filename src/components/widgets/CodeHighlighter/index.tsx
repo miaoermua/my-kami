@@ -35,7 +35,7 @@ export const HighLighter: FC<Props> = (props) => {
 
   useInsertionEffect(() => {
     const css = loadStyleSheet(
-      `https://status.miaoer.net/static/prism-themes/prism-one-${
+      `https://static.miaoer.net/static/prism-themes/prism-one-${
         isPrintMode ? 'light' : colorMode
       }.css`,
     )
@@ -51,21 +51,21 @@ export const HighLighter: FC<Props> = (props) => {
   }, [colorMode, isPrintMode])
   useInsertionEffect(() => {
     loadStyleSheet(
-      'https://status.miaoer.net/static/prism-themes/prism-line-numbers.min.css',
+      'https://static.miaoer.net/static/prism-themes/prism-line-numbers.min.css',
     )
 
     Promise.all([
       loadScript(
-        'https://status.miaoer.net/static/prism-themes/prism-core.min.js',
+        'https://static.miaoer.net/static/prism-themes/prism-core.min.js',
       ),
     ])
       .then(() =>
         Promise.all([
           loadScript(
-            'https://status.miaoer.net/static/prism-themes/prism-autoloader.min.js',
+            'https://static.miaoer.net/static/prism-themes/prism-autoloader.min.js',
           ),
           loadScript(
-            'https://status.miaoer.net/static/prism-themes/prism-line-numbers.min.js',
+            'https://static.miaoer.net/static/prism-themes/prism-line-numbers.min.js',
           ),
         ]),
       )
