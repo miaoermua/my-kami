@@ -57,7 +57,7 @@ export const FontIcon: FC<{ icon?: JSX.Element | string }> = memo((props) => {
       const $id = 'font-awesome-link'
       const $link = document.createElement('link')
       $link.href =
-        'https://cdn.timochan.cn/css/all.min.css'
+        'https://static.miaoer.net/static/fontawesome-free/css/all.min.css'
       $link.rel = 'stylesheet'
       $link.id = $id
 
