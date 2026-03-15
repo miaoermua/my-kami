@@ -1,3 +1,7 @@
+/**
+ * Navigation and locale from URL. Locale write contract: use this module's Link (localizes href + as)
+ * and useRouter().push(pathname, { locale }) so all navigation preserves current language.
+ */
 import NextLink from 'next/link'
 import { useRouter as useNextRouter } from 'next/router'
 import React, { type ComponentProps } from 'react'
@@ -26,24 +30,12 @@ function resolveLocaleFromQueryOrPath(
   return defaultLocale
 }
 
-const NEXT_LOCALE_COOKIE = 'NEXT_LOCALE'
-
-function getLocaleFromCookie(cookieHeader: string | undefined): Locale | null {
-  if (!cookieHeader || !cookieHeader.trim()) return null
-  const match = cookieHeader
-    .split(';')
-    .map((s) => s.trim().split('='))
-    .find(([key]) => key === NEXT_LOCALE_COOKIE)
-  const value = match?.[1]?.trim()
-  return value && localeSet.has(value) ? (value as Locale) : null
-}
-
 export type LocaleContext = {
   pathname?: string
   asPath?: string
   query?: Record<string, string | string[] | undefined>
   /** On the server, req.url is the actual request path (e.g. /en). Use it so x-lang matches the requested locale. */
-  req?: { url?: string; headers?: { cookie?: string } } | null
+  req?: { url?: string } | null
 }
 
 /**
@@ -64,9 +56,6 @@ export function getLocaleFromContext(ctx: LocaleContext): Locale {
   const asPath = ctx.asPath ?? pathname
   const fromPath = resolveLocaleFromQueryOrPath(queryLocale, pathname, asPath)
   if (fromPath !== defaultLocale) return fromPath
-
-  const fromCookie = getLocaleFromCookie(ctx.req?.headers?.cookie)
-  if (fromCookie) return fromCookie
 
   return defaultLocale
 }
@@ -121,11 +110,13 @@ export function usePathname(): string {
 }
 
 /**
- * Link that prefixes href with current locale.
+ * Link that prefixes href and as with current locale.
  * Pass pathname without locale prefix (e.g. /posts/cat/slug).
+ * Both href and as are localized so navigation preserves the current language.
  */
 export function Link({
   href,
+  as,
   locale: localeProp,
   ...rest
 }: ComponentProps<typeof NextLink> & { locale?: string }) {
@@ -139,21 +130,47 @@ export function Link({
       pathnameForLocale,
       asPathForLocale,
     )
-  const pathname =
-    typeof href === 'string'
+  let resolvedHref: ComponentProps<typeof NextLink>['href'] = href
+  if (typeof href === 'string') {
+    const isAbsoluteUrl =
+      href.startsWith('http://') || href.startsWith('https://')
+    resolvedHref = isAbsoluteUrl ? href : buildLocalizedHref(href, currentLocale)
+  } else if (
+    href &&
+    typeof href === 'object' &&
+    'pathname' in href &&
+    typeof href.pathname === 'string'
+  ) {
+    const isAbsoluteUrl =
+      href.pathname.startsWith('http://') || href.pathname.startsWith('https://')
+    resolvedHref = isAbsoluteUrl
       ? href
-      : href && typeof href === 'object' && 'pathname' in href
-        ? (href as { pathname: string }).pathname
-        : ''
-  const isAbsoluteUrl =
-    typeof pathname === 'string' &&
-    (pathname.startsWith('http://') || pathname.startsWith('https://'))
-  const resolvedHref = pathname
-    ? isAbsoluteUrl
-      ? pathname
-      : buildLocalizedHref(pathname, currentLocale)
-    : href
-  return React.createElement(NextLink, { href: resolvedHref, ...rest })
+      : { ...href, pathname: buildLocalizedHref(href.pathname, currentLocale) }
+  }
+
+  let resolvedAs: ComponentProps<typeof NextLink>['as'] = as
+  if (typeof as === 'string') {
+    const isAbsoluteUrl =
+      as.startsWith('http://') || as.startsWith('https://')
+    resolvedAs = isAbsoluteUrl ? as : buildLocalizedHref(as, currentLocale)
+  } else if (
+    as &&
+    typeof as === 'object' &&
+    'pathname' in as &&
+    typeof as.pathname === 'string'
+  ) {
+    const isAbsoluteUrl =
+      as.pathname.startsWith('http://') || as.pathname.startsWith('https://')
+    resolvedAs = isAbsoluteUrl
+      ? as
+      : { ...as, pathname: buildLocalizedHref(as.pathname, currentLocale) }
+  }
+
+  return React.createElement(NextLink, {
+    href: resolvedHref,
+    as: resolvedAs,
+    ...rest,
+  })
 }
 
 /** Alias for Link (Shiroi uses Link; Kami may use LocaleLink elsewhere). */
