@@ -1,10 +1,9 @@
-import { create } from 'zustand'
+import type { AxiosError } from 'axios'
+import { createWithEqualityFn } from 'zustand/traditional'
 
 import { apiClient } from '~/utils/client'
 
 import { useUserStore } from './user'
-
-// import './dev'
 
 export interface ViewportRecord {
   w: number
@@ -55,7 +54,7 @@ const appDefault: AppState = {
   appUrl: null,
 }
 
-export const useAppStore = create<AppState & AppAction>(
+export const useAppStore = createWithEqualityFn<AppState & AppAction>(
   (setState, getState) => {
     return {
       ...appDefault,
@@ -108,11 +107,21 @@ export const useAppStore = create<AppState & AppAction>(
         if (!isLogged) {
           return
         }
-        const { data } = await apiClient.proxy.options.url.get<{
-          data: UrlConfig
-        }>()
+        try {
+          const { data } = await apiClient.proxy.options.url.get<{
+            data: UrlConfig
+          }>()
+          setState({ appUrl: data })
+        } catch (error) {
+          const status = (error as AxiosError | undefined)?.response?.status
+          if (status === 401 || status === 403) {
+            useUserStore.getState().setLoggedIn(false)
+            setState({ appUrl: null })
+            return
+          }
 
-        setState({ appUrl: data })
+          console.error('Fetch app url config failed:', error)
+        }
       },
     }
   },

@@ -1,7 +1,7 @@
 import { clsx } from 'clsx'
 import type { MarkdownToJSX } from 'markdown-to-jsx'
 import { sanitizeUrl } from 'markdown-to-jsx'
-import type { FC } from 'react'
+import type { FC, PropsWithChildren } from 'react'
 import {
   Fragment,
   createElement,
@@ -53,6 +53,18 @@ export const Comments: FC<{ allowComment: boolean }> = memo(
 const CommentList: FC = memo(() => {
   const comments = useCommentCollection((state) => state.comments)
 
+  const rootOrdinalById = useMemo(() => {
+    const sorted = [...comments].sort(
+      (a, b) =>
+        new Date(a.created).getTime() - new Date(b.created).getTime(),
+    )
+    const m = new Map<string, number>()
+    sorted.forEach((c, i) => {
+      m.set(c.id, i + 1)
+    })
+    return m
+  }, [comments])
+
   return (
     <BottomToUpTransitionView
       appear
@@ -60,14 +72,22 @@ const CommentList: FC = memo(() => {
     >
       <div id="comments-wrap">
         {comments.map((comment) => {
-          return <InnerCommentList id={comment.id} key={comment.id} />
+          const ord = rootOrdinalById.get(comment.id) ?? 1
+          return (
+            <InnerCommentList
+              id={comment.id}
+              key={comment.id}
+              threadKey={`#${ord}`}
+            />
+          )
         })}
       </div>
     </BottomToUpTransitionView>
   )
 })
 
-const SingleComment: FC<{ id: string }> = ({ id, children }) => {
+const SingleComment: FC<PropsWithChildren<{ id: string; threadKey: string }>> =
+  ({ id, threadKey, children }) => {
   const t = useTranslations('comment')
   const tCommon = useTranslations('common')
   const [replyId, setReplyId] = useState('')
@@ -90,8 +110,8 @@ const SingleComment: FC<{ id: string }> = ({ id, children }) => {
   )
 
   const { commentIdMap, comments } = useCommentCollection<{
-    commentIdMap: Map<Id, CommentModel>
-    comments: CommentModel[]
+    commentIdMap: Map<Id, CommentModelWithHighlight>
+    comments: CommentModelWithHighlight[]
   }>(
     (state) => ({
       commentIdMap: state.data,
@@ -108,15 +128,21 @@ const SingleComment: FC<{ id: string }> = ({ id, children }) => {
 
   const handleReply = useCallback(
     async (model) => {
-      const { success, error } = await openCommentMessage()
+      const { success, error } = await openCommentMessage({
+        sending: t('sending'),
+        success: t('success'),
+        failed: t('failed'),
+      })
       try {
         let data: CommentModel
         if (logged) {
-          data = await apiClient.comment.proxy.master
-            .reply(comment.id)
-            .post({ data: model })
+          data = await apiClient.comment.proxy.reader.reply(comment.id).post({
+            data: model,
+          })
         } else {
-          data = await apiClient.comment.reply(comment.id, model)
+          data = await apiClient.comment.proxy.guest.reply(comment.id).post({
+            data: model,
+          })
         }
         success()
 
@@ -129,7 +155,7 @@ const SingleComment: FC<{ id: string }> = ({ id, children }) => {
         console.error(err)
       }
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
     [comment.id, logged],
   )
   const handleDelete = useCallback(
@@ -232,15 +258,14 @@ const SingleComment: FC<{ id: string }> = ({ id, children }) => {
       }
       content={
         <KamiMarkdown
-          value={`${
-            comment.parent
-              ? `@${
-                  commentIdMap.get(comment.parent as any as string)?.id ??
-                  (comment.parent as any as CommentModel)?.id ??
-                  ''
-                } `
+          value={`${(() => {
+            const parentRaw = comment.parent
+            const parentId =
+              typeof parentRaw === 'string' ? parentRaw : parentRaw?.id
+            return parentId
+              ? `@${commentIdMap.get(parentId)?.author ?? ''} `
               : ''
-          }${comment.text}`}
+          })()}${comment.text}`}
           forceBlock
           className={styles['comment']}
           disableParsingRawHTML
@@ -289,7 +314,7 @@ const SingleComment: FC<{ id: string }> = ({ id, children }) => {
         />
       }
       datetime={comment.created}
-      commentKey={comment.key}
+      commentKey={threadKey}
       actions={actionsEl}
     >
       {replyId === comment.id && (
@@ -333,20 +358,34 @@ const SingleComment: FC<{ id: string }> = ({ id, children }) => {
     </Comment>
   )
 }
-const InnerCommentList = memo<{ id: string }>(({ id }) => {
-  const comment = useCommentCollection((state) => state.data.get(id))
+const InnerCommentList = memo<{ id: string; threadKey: string }>(
+  ({ id, threadKey }) => {
+    const comment = useCommentCollection((state) => state.data.get(id))
 
-  if (!comment) {
-    return null
-  }
-  if (comment.children?.length > 0) {
-    const children = comment.children
+    if (!comment) {
+      return null
+    }
+    if (comment.children?.length > 0) {
+      const children = comment.children
 
-    const childComments = children.map((child: CommentModel) => {
-      return <InnerCommentList id={child.id} key={child.id} />
-    })
+      const childComments = children.map(
+        (child: CommentModel, index: number) => {
+          return (
+            <InnerCommentList
+              id={child.id}
+              key={child.id}
+              threadKey={`${threadKey}#${index + 1}`}
+            />
+          )
+        },
+      )
 
-    return <SingleComment id={comment.id}>{childComments}</SingleComment>
-  }
-  return <SingleComment id={comment.id} />
-})
+      return (
+        <SingleComment id={comment.id} threadKey={threadKey}>
+          {childComments}
+        </SingleComment>
+      )
+    }
+    return <SingleComment id={comment.id} threadKey={threadKey} />
+  },
+)

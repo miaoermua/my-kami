@@ -53,15 +53,15 @@ export const NoteFooterActionBar: FC<{ id: string }> = ({ id }) => {
       },
       {
         name: (
-          <div className="inline-flex items-center leading-[1]">
-            <div className="relative mr-2 h-[1rem] w-[1rem]">
+          <div className="inline-flex items-center leading-none">
+            <div className="mr-1 inline-flex size-5 items-center justify-center">
               <LikeButton
                 checked={isLiked}
-                width="2rem"
-                className="absolute inset-0 -translate-x-1/2 -translate-y-1/2 transform "
+                width="1.4rem"
+                className="leading-none"
               />
             </div>
-            <NumberTransition number={note.count?.like || 0} className="ml-4" />
+            <NumberTransition number={note.count?.like || 0} className="ml-1" />
           </div>
         ),
         color: isLiked ? '#e74c3c' : undefined,

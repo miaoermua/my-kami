@@ -1,4 +1,5 @@
 import { clsx } from 'clsx'
+import { useTranslations } from 'next-intl'
 import type { FC } from 'react'
 import { Fragment, useCallback, useEffect, useState } from 'react'
 import { useInView } from 'react-intersection-observer'
@@ -21,18 +22,24 @@ import { Comments } from './comments'
 import styles from './index.module.css'
 import { CommentLoading } from './loading'
 
-export const openCommentMessage = async () => {
+interface CommentMessageCopy {
+  sending: string
+  success: string
+  failed: string
+}
+
+export const openCommentMessage = async (copy: CommentMessageCopy) => {
   const { next } = await message.loading({
-    content: '发送中',
+    content: copy.sending,
     duration: 3000,
   })
 
   return {
     success: () => {
-      next('成功啦', 'success')
+      next(copy.success, 'success')
     },
     error: () => {
-      next('失败了，www', 'error')
+      next(copy.failed, 'error')
     },
   }
 }
@@ -45,6 +52,7 @@ interface CommentWrapProps {
 
 const CommentWrap: FC<CommentWrapProps> = (props) => {
   const { id, allowComment } = props
+  const t = useTranslations('comment')
 
   const [pagination, setPagination] = useState({} as Pager)
   const logged = useIsLogged()
@@ -74,17 +82,23 @@ const CommentWrap: FC<CommentWrapProps> = (props) => {
 
   const handleComment = useCallback(
     async (model) => {
-      const { success, error } = await openCommentMessage()
+      const { success, error } = await openCommentMessage({
+        sending: t('sending'),
+        success: t('success'),
+        failed: t('failed'),
+      })
       try {
         if (logged) {
-          await apiClient.comment.proxy.master.comment(id).post({
+          await apiClient.comment.proxy.reader(id).post({
             params: {
               ts: Date.now(),
             },
             data: { ...model },
           })
         } else {
-          await apiClient.comment.comment(id, model)
+          await apiClient.comment.proxy.guest(id).post({
+            data: { ...model },
+          })
         }
         requestAnimationFrame(() => {
           success()
@@ -96,7 +110,7 @@ const CommentWrap: FC<CommentWrapProps> = (props) => {
         console.error(e)
       }
     },
-    [fetchComments, id, logged],
+    [fetchComments, id, logged, t],
   )
 
   const hash = useHash()
@@ -143,15 +157,15 @@ const CommentWrap: FC<CommentWrapProps> = (props) => {
       {allowComment && (
         <h1 className="headline">
           {comments.length
-            ? `共有${comments.length}条 Comments`
-            : '亲亲留个 Message 再走呗'}
+            ? t('totalCount', { count: comments.length })
+            : t('emptyHint')}
         </h1>
       )}
 
       {allowComment ? (
         <CommentBox onSubmit={handleComment} refId={id} />
       ) : (
-        <h1 className="headline">主人禁止了 Comment</h1>
+        <h1 className="headline">{t('disabled')}</h1>
       )}
       <span id="comment-anchor" />
       {commentShow ? (
@@ -186,6 +200,7 @@ const CommentWrap: FC<CommentWrapProps> = (props) => {
 }
 
 const Comment: typeof CommentWrap = (props) => {
+  const t = useTranslations('comment')
   const {
     function: {
       comment: { disable },
@@ -195,7 +210,7 @@ const Comment: typeof CommentWrap = (props) => {
   if (disable) {
     return (
       <h1 className="headline dark:text-shizuku-text !mt-6 text-lg font-semibold">
-        全站 Comment 功能未开放
+        {t('closed')}
       </h1>
     )
   }

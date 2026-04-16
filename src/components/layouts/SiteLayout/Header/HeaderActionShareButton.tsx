@@ -1,4 +1,4 @@
-import type { FC } from 'react'
+import type { FC, JSX } from 'react'
 import { memo } from 'react'
 
 import { MdiShare } from '~/components/ui/Icons/layout'
@@ -19,9 +19,9 @@ export const HeaderActionShareButton: FC = () => {
           onClick={() => {
             navigator
               .share(shareData!)
-              // eslint-disable-next-line @typescript-eslint/no-empty-function
+               
               .then(() => {})
-              // eslint-disable-next-line @typescript-eslint/no-empty-function
+               
               .catch(() => {})
           }}
           icon={<MdiShare />}
@@ -41,7 +41,7 @@ export const HeaderActionButtonWithIcon: FC<{
     <div onClick={onClick} className="flex items-center justify-center">
       <span className="mr-2 inline-flex items-center">{icon}</span>
 
-      <span className="flex-shrink-0">{title}</span>
+      <span className="shrink-0">{title}</span>
     </div>
   )
 })

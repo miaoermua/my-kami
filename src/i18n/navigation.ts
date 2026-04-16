@@ -5,15 +5,18 @@
 import NextLink from 'next/link'
 import { useRouter as useNextRouter } from 'next/router'
 import React, { type ComponentProps } from 'react'
+import type { UrlObject } from 'url'
 
 import type { Locale } from '~/i18n/config'
-import { defaultLocale, locales } from '~/i18n/config'
+import { defaultLocale, enabledLocaleSet } from '~/i18n/config'
 import { routing } from '~/i18n/routing'
 
-const localeSet = new Set<string>(locales)
-
 function isLocale(value: unknown): value is Locale {
-  return typeof value === 'string' && localeSet.has(value)
+  return typeof value === 'string' && enabledLocaleSet.has(value)
+}
+
+function clampLocale(value: string): Locale {
+  return enabledLocaleSet.has(value) ? (value as Locale) : defaultLocale
 }
 
 function resolveLocaleFromQueryOrPath(
@@ -70,7 +73,7 @@ export function getPathnameWithoutLocale(pathname: string): string {
     first &&
     (routing.locales as readonly string[]).includes(first)
   ) {
-    return `/${segments.slice(1).join('/')}` || '/'
+    return `/${segments.slice(1).join('/')}`
   }
   return pathname.startsWith('/') ? pathname : `/${pathname}`
 }
@@ -82,11 +85,14 @@ export function buildLocalizedHref(
   pathname: string,
   locale: string = defaultLocale,
 ): string {
+  const resolvedLocale = clampLocale(locale)
   const normalized = pathname.startsWith('/') ? pathname : `/${pathname}`
-  if (locale === defaultLocale && routing.localePrefix === 'as-needed') {
-    return normalized
+  const [pathOnly = '/', suffix = ''] = normalized.match(/^([^?#]*)(.*)$/)?.slice(1) ?? []
+  const normalizedPath = getPathnameWithoutLocale(pathOnly || '/')
+  if (resolvedLocale === defaultLocale && routing.localePrefix === 'as-needed') {
+    return `${normalizedPath}${suffix}`
   }
-  return `/${locale}${normalized}`
+  return `/${resolvedLocale}${normalizedPath}${suffix}`
 }
 
 /**
@@ -124,12 +130,13 @@ export function Link({
   const pathnameForLocale = router?.pathname ?? ''
   const asPathForLocale = router?.asPath ?? pathnameForLocale
   const currentLocale =
-    localeProp ??
-    resolveLocaleFromQueryOrPath(
-      router?.query?.locale,
-      pathnameForLocale,
-      asPathForLocale,
-    )
+    localeProp != null
+      ? clampLocale(localeProp)
+      : resolveLocaleFromQueryOrPath(
+          router?.query?.locale,
+          pathnameForLocale,
+          asPathForLocale,
+        )
   let resolvedHref: ComponentProps<typeof NextLink>['href'] = href
   if (typeof href === 'string') {
     const isAbsoluteUrl =
@@ -181,37 +188,54 @@ export const LocaleLink = Link
  */
 export function useRouter() {
   const router = useNextRouter()
+  const localizeUrl = (url: string | UrlObject, locale: Locale) => {
+    if (typeof url === 'string') {
+      return buildLocalizedHref(url, locale)
+    }
+    if (!url.pathname || typeof url.pathname !== 'string') {
+      return url
+    }
+    const isAbsoluteUrl =
+      url.pathname.startsWith('http://') || url.pathname.startsWith('https://')
+    if (isAbsoluteUrl) {
+      return url
+    }
+    return { ...url, pathname: buildLocalizedHref(url.pathname, locale) }
+  }
+
   return {
     ...router,
     push: (
-      pathname: string,
+      pathname: string | UrlObject,
       options?: { locale?: string; scroll?: boolean; shallow?: boolean },
     ) => {
-      const locale =
+      const locale = clampLocale(
         options?.locale ??
-        resolveLocaleFromQueryOrPath(
-          router.query?.locale,
-          router.pathname ?? '',
-          router.asPath ?? '',
-        )
-      const href = buildLocalizedHref(pathname, locale)
+          resolveLocaleFromQueryOrPath(
+            router.query?.locale,
+            router.pathname ?? '',
+            router.asPath ?? '',
+          ),
+      )
+      const href = localizeUrl(pathname, locale)
       return router.push(href, undefined, {
         scroll: options?.scroll,
         shallow: options?.shallow,
       })
     },
     replace: (
-      pathname: string,
+      pathname: string | UrlObject,
       options?: { locale?: string; scroll?: boolean; shallow?: boolean },
     ) => {
-      const locale =
+      const locale = clampLocale(
         options?.locale ??
-        resolveLocaleFromQueryOrPath(
-          router.query?.locale,
-          router.pathname ?? '',
-          router.asPath ?? '',
-        )
-      const href = buildLocalizedHref(pathname, locale)
+          resolveLocaleFromQueryOrPath(
+            router.query?.locale,
+            router.pathname ?? '',
+            router.asPath ?? '',
+          ),
+      )
+      const href = localizeUrl(pathname, locale)
       return router.replace(href, undefined, {
         scroll: options?.scroll,
         shallow: options?.shallow,

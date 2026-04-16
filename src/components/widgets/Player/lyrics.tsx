@@ -39,7 +39,7 @@ const LyricsRender: FC<{ lyrics: string }> = memo(({ lyrics }) => {
     })
   }, [currentTime])
 
-  const [animationParent] = useAutoAnimate<HTMLUListElement>(
+  const [animationParent] = useAutoAnimate(
     (el, action, oldCoords, newCoords) => {
       let keyframes: Keyframe[] = []
       // supply a different set of keyframes for each action
@@ -118,7 +118,7 @@ const LyricsRender: FC<{ lyrics: string }> = memo(({ lyrics }) => {
                 key={item.content}
                 data-hms={item.hms}
                 className={clsx(
-                  'my-2 origin-left scale-100 transform opacity-100 transition-all !duration-500 ease-in-out',
+                  'my-2 origin-left scale-100 opacity-100 transition-all !duration-500 ease-in-out',
                   classNameMap[index],
                 )}
               >

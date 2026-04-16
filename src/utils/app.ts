@@ -6,7 +6,6 @@ import type { AggregateRoot } from '@mx-space/api-client'
 import { defaultConfigs } from '~/configs.default'
 import type { KamiConfig } from '~/types/config'
 import { $axios, apiClient } from '~/utils/client'
-import { TokenKey } from '~/utils/cookie'
 import { isClientSide, isServerSide } from '~/utils/env'
 
 import PKG from '../../package.json'
@@ -37,24 +36,6 @@ export const attachRequestProxy = (request?: IncomingMessage) => {
     'User-Agent'
   ] = `${request.headers['user-agent']} NextJS/v${PKG.dependencies.next} Kami/${version}`
 
-  // forward auth token
-  const cookie = request.headers.cookie
-  if (cookie) {
-    const token = cookie
-      .split(';')
-      .find((str) => {
-        const [key] = str.split('=')
-
-        return key === TokenKey
-      })
-      ?.split('=')[1]
-    if (token) {
-      $axios.defaults.headers['Authorization'] = `bearer ${token.replace(
-        /^Bearer\s/i,
-        '',
-      )}`
-    }
-  }
 }
 
 export async function fetchInitialData(): Promise<InitialDataType> {

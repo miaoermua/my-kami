@@ -9,19 +9,22 @@ import { simpleCamelcaseKeys as camelcaseKeys } from '@mx-space/api-client'
 import { useRandomImage } from '~/hooks/app/use-kami-theme'
 import { useIsUnMounted } from '~/hooks/common/use-is-unmounted'
 import { useSafeSetState } from '~/hooks/common/use-safe-setState'
+import { useLocaleFromContext } from '~/provider/locale-context'
 import { apiClient } from '~/utils/client'
 import { getRandomImage } from '~/utils/images'
 import styles from './link-card.module.css'
 
-export type LinkCardSource = 'gh' | 'self'
+export type LinkCardSource = 'gh' | 'self' | 'external'
 export interface LinkCardProps {
   id: string
   source?: LinkCardSource
   className?: string
+  url?: string
 }
 export const LinkCard: FC<LinkCardProps> = (props) => {
-  const { id, source = 'self', className } = props
+  const { id, source = 'self', className, url } = props
   const isUnMounted = useIsUnMounted()
+  const locale = useLocaleFromContext()
 
   const [loading, setLoading] = useState(true)
   const [isError, setIsError] = useState(false)
@@ -54,11 +57,13 @@ export const LinkCard: FC<LinkCardProps> = (props) => {
               return false
             }
             fetchFnRef.current = async () => {
-              return apiClient.note.getNoteById(+params).then((res) => {
+              return apiClient.note
+                .getNoteByNid(+params, { lang: locale })
+                .then((res) => {
                 const { title, images, text } = res.data
                 setCardInfo({
                   title,
-                  desc: `${RemoveMarkdown(text).slice(0, 50)}...`,
+                  desc: `${RemoveMarkdown(text || '').slice(0, 50)}...`,
                   // TODO
                   image: images?.[0]?.src || randomImage,
                 })
@@ -76,11 +81,11 @@ export const LinkCard: FC<LinkCardProps> = (props) => {
             }
 
             fetchFnRef.current = async () => {
-              return apiClient.post.getPost(params, slug).then((res) => {
+              return apiClient.post.getPost(params, slug, { lang: locale }).then((res) => {
                 const { title, images, text, summary } = res
                 setCardInfo({
                   title,
-                  desc: summary ?? `${RemoveMarkdown(text).slice(0, 50)}...`,
+                  desc: summary ?? `${RemoveMarkdown(text || '').slice(0, 50)}...`,
                   // TODO
                   image: images?.[0]?.src || getRandomImage(1)[0],
                 })
@@ -118,8 +123,48 @@ export const LinkCard: FC<LinkCardProps> = (props) => {
 
         return !rest.length
       }
+      case 'external': {
+        const targetUrl = url || id
+        if (!targetUrl) {
+          return false
+        }
+
+        let parsedUrl: URL
+        try {
+          parsedUrl = new URL(targetUrl)
+        } catch {
+          return false
+        }
+
+        if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
+          return false
+        }
+
+        fetchFnRef.current = async () => {
+          const data = await axios
+            .get<{
+              title: string
+              description?: string
+              image?: string
+              url: string
+            }>('/api/link-preview', {
+              params: { url: parsedUrl.toString() },
+            })
+            .then((res) => res.data)
+
+          setCardInfo({
+            title: data.title || parsedUrl.hostname,
+            desc: data.description || parsedUrl.toString(),
+            image: data.image || '',
+          })
+          setFullUrl(data.url || parsedUrl.toString())
+        }
+
+        setFullUrl(parsedUrl.toString())
+        return true
+      }
     }
-  }, [source, id])
+  }, [source, id, locale, randomImage])
   const fetchInfo = useCallback(async () => {
     if (!fetchFnRef.current) {
       return
@@ -154,6 +199,7 @@ export const LinkCard: FC<LinkCardProps> = (props) => {
     <LinkComponent
       href={fullUrl}
       target={source !== 'self' ? '_blank' : '_self'}
+      rel={source !== 'self' ? 'noreferrer noopener' : undefined}
       ref={ref}
       className={clsx(
         styles['card-grid'],

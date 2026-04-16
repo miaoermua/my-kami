@@ -1,4 +1,5 @@
 import type { NextPage } from 'next'
+import type { UserModel } from '@mx-space/api-client'
 import { useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { message } from 'react-message-popup'
@@ -8,9 +9,9 @@ import { useRouter } from '~/i18n/navigation'
 import { PhUser } from '~/components/ui/Icons/for-comment'
 import { CarbonPassword } from '~/components/ui/Icons/for-login'
 import { Input } from '~/components/ui/Input'
+import { hasActiveSession } from '~/utils/auth'
 import { apiClient } from '~/utils/client'
 import { releaseDevtool } from '~/utils/console'
-import { setToken } from '~/utils/cookie'
 
 import styles from './index.module.css'
 
@@ -21,9 +22,16 @@ const LoginView: NextPage = () => {
   const router = useRouter()
 
   const handleLogin = async () => {
-    const data = await (apiClient as any).user.login(username, password)
+    await apiClient.owner.login(username, password, {
+      rememberMe: true,
+    })
+    const session = await apiClient.owner.getSession()
+    if (!hasActiveSession(session)) {
+      message.error(t('fail'))
+      return
+    }
 
-    setToken(data.token)
+    useUserStore.getState().setLoggedIn(true)
     if (history.backPath && history.backPath.length) {
       router.push(history.backPath.pop()!)
     } else {
@@ -31,7 +39,12 @@ const LoginView: NextPage = () => {
     }
     message.success(t('success'))
 
-    useUserStore.getState().setToken(data.token)
+    try {
+      const owner = await apiClient.owner.getOwnerInfo()
+      useUserStore.getState().setUser(owner as UserModel)
+    } catch {
+      /* profile fetch is best-effort */
+    }
     releaseDevtool()
   }
 

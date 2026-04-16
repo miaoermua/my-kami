@@ -70,7 +70,7 @@ export const Gallery: FC<GalleryProps> = (props) => {
 
   const [currentIndex, setCurrentIndex] = useState(0)
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   const handleOnScroll: UIEventHandler<HTMLDivElement> = useCallback(
     throttle<UIEventHandler<HTMLDivElement>>((e) => {
       const $ = e.target as HTMLDivElement
@@ -210,7 +210,7 @@ export const Gallery: FC<GalleryProps> = (props) => {
           return (
             <div
               className={clsx(
-                'bg-dark-50 h-[6px] w-[6px] cursor-pointer rounded-full opacity-50 transition-opacity duration-200 ease-in-out',
+                'bg-dark-50 size-[6px] cursor-pointer rounded-full opacity-50 transition-opacity duration-200 ease-in-out',
                 currentIndex == i && '!opacity-100',
               )}
               key={i}

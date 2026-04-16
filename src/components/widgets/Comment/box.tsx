@@ -13,7 +13,7 @@ import { useTranslations } from 'next-intl'
 import { message } from 'react-message-popup'
 import isEmail from 'validator/lib/isEmail'
 import isUrl from 'validator/lib/isURL'
-import { create } from 'zustand'
+import { createWithEqualityFn } from 'zustand/traditional'
 
 import { useIsLogged, useUserStore } from '~/atoms/user'
 import { ImpressionView } from '~/components/common/ImpressionView'
@@ -54,7 +54,7 @@ const initialState = {
 }
 
 const createCommentState = () =>
-  create<
+  createWithEqualityFn<
     typeof initialState & {
       setConfig(config: Partial<typeof initialConfig>): void
     }
@@ -91,7 +91,7 @@ const FormInput: FC<{
   const value = useCommentStore((state) => state[fieldKey])
   const onChange = useCallback((e) => {
     useCommentStore.setState({ [fieldKey]: e.target.value })
-  }, [])
+  }, [fieldKey, useCommentStore])
   return (
     <Input
       placeholder={placeholder}
@@ -340,19 +340,17 @@ export const CommentBox: FC<{
           [isWhispers],
         )}
         placeholder={
-          !logged
-            ? '嘿 ︿(￣︶￣)︿, 留个 Message 好不好嘛~'
-            : '主人，说点什么好呢？'
+          !logged ? t('placeholder') : t('placeholderOwner')
         }
       />
 
       <div className="relative mt-2 flex flex-wrap items-center justify-between">
-        <div className="flex flex-shrink-0 items-center space-x-2">
+        <div className="flex shrink-0 items-center space-x-2">
           <MarkdownSupport />
           <KaomojiButton onClickKaomoji={handleInsertEmoji} />
         </div>
 
-        <div className="flex flex-shrink-0 items-center whitespace-nowrap">
+        <div className="flex shrink-0 items-center whitespace-nowrap">
           <CommentBoxOption
             refId={refId}
             commentId={commentId}
@@ -364,7 +362,7 @@ export const CommentBox: FC<{
               className="btn !border-red !text-red !bg-transparent"
               onClick={handleCancel}
             >
-              取消回复
+              {t('cancelReply')}
             </Button>
           )}
           <Button
@@ -372,7 +370,7 @@ export const CommentBox: FC<{
             onClick={handleSubmit}
             disabled={text.trim().length === 0}
           >
-            发送
+            {t('send')}
           </Button>
         </div>
       </div>
@@ -385,6 +383,7 @@ const CommentBoxOption: FC<{
   refId: string
   instanceId: string
 }> = (props) => {
+  const t = useTranslations('comment')
   const isLogged = useIsLogged()
   const useCommentStore = commentStoreMap[props.instanceId]
   const { syncToRecently, isWhispers } = useCommentStore((state) =>
@@ -406,7 +405,7 @@ const CommentBoxOption: FC<{
             }}
           />
           <label htmlFor="comment-box-sync" className="text-shizuku">
-            同步到速记
+            {t('syncToSay')}
           </label>
         </fieldset>
       )}
@@ -421,7 +420,7 @@ const CommentBoxOption: FC<{
             }}
           />
           <label htmlFor="comment-box-whispers" className="text-shizuku">
-            悄悄话
+            {t('secret')}
           </label>
         </fieldset>
       )}
@@ -429,13 +428,14 @@ const CommentBoxOption: FC<{
   )
 }
 const MarkdownSupport = () => {
+  const t = useTranslations('comment')
   return (
     <FloatPopover
       triggerComponent={
         useRef(() => (
           <Button
             aria-label="support markdown"
-            className="btn !text-secondary pointer-events-none mr-2 flex-shrink-0 cursor-not-allowed rounded-full border-[2px] !border-current !bg-transparent !p-2 text-lg"
+            className="btn !text-secondary pointer-events-none mr-2 shrink-0 cursor-not-allowed rounded-full border-2 !border-current !bg-transparent !p-2 text-lg"
           >
             <GridiconsNoticeOutline />
           </Button>
@@ -443,15 +443,16 @@ const MarkdownSupport = () => {
       }
     >
       <div className="leading-7">
-        <p>Comment 支持部分 Markdown 语法</p>
-        <p>Comment 可能被移入垃圾箱</p>
-        <p>Comment 可能需要审核，审核通过后才会显示</p>
+        <p>{t('markdownHint')}</p>
+        <p>{t('spamHint')}</p>
+        <p>{t('moderateHint')}</p>
       </div>
     </FloatPopover>
   )
 }
 const KaomojiButton: FC<{ onClickKaomoji: (kaomoji: string) => any }> = memo(
   ({ onClickKaomoji }) => {
+    const t = useTranslations('comment')
     const { event } = useAnalyze()
     const [trackerOnce, setOnce] = useState(false)
     const randomKaomoji = useRef(sample(kaomoji))
@@ -470,10 +471,10 @@ const KaomojiButton: FC<{ onClickKaomoji: (kaomoji: string) => any }> = memo(
       >
         <ImpressionView
           shouldTrack={!trackerOnce}
-          trackerMessage="曝光 Kaomoji 面板"
+          trackerMessage={t('trackKaomojiPanel')}
           onTrack={handleTrack}
         >
-          <div className="h-[300px] max-h-[50vh] w-[300px] max-w-[80vw] overflow-auto">
+          <div className="size-[300px] max-h-[50vh] max-w-[80vw] overflow-auto">
             {kaomoji.map((emoji, i) => (
               <Button
                 aria-label="kaomoji panel"

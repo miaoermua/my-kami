@@ -47,7 +47,7 @@ const TopicComp: FC<{
         })
       }
     >
-      <span className="flex-grow truncate">{note?.topic?.name}</span>
+      <span className="grow truncate">{note?.topic?.name}</span>
     </Link>
   )
 }
@@ -92,7 +92,7 @@ const ObserveredNoteTimelineList: FC<
       setList(data)
     }
     fetchList()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
     return () => {
       isCanceled = true
     }
@@ -103,7 +103,7 @@ const ObserveredNoteTimelineList: FC<
     [note],
   )
 
-  const [animationParent] = useAutoAnimate<HTMLUListElement>()
+  const [animationParent] = useAutoAnimate({})
 
   return (
     <div className={clsx(styles['container'], className)} data-hide-print>
